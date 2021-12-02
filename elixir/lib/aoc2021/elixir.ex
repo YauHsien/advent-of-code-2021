@@ -50,4 +50,33 @@ defmodule Aoc2021.Elixir do
         three_sum_list
         |> count_increased_numbers!()
   end
+
+
+  @doc """
+  Day2: Dive!
+
+  ## Examination
+
+      iex> Aoc2021.Elixir.do_day2_exercise("../inputs/day2_input.txt")
+      1868935
+  """
+  def do_day2_exercise(file_path) do
+    matter =
+      file_path
+      |> File.stream!()
+      |> Stream.map(fn line -> [command, raw] = String.split(line, [" ","\n"], trim: true)
+      {command, String.to_integer(raw)}
+    end)
+    |> operate_submarine!()
+      matter[:hposition] * matter[:depth]
+  end
+
+  @spec operate_submarine!(commands :: Stream.t(), position :: Keyword.t()) :: (matter :: Integer.t())
+  defp operate_submarine!(commands, position \\ [hposition: 0, depth: 0]) do
+    commands
+    |> Enum.reduce(position, fn {"forward",number}, acc -> Keyword.put(acc, :hposition, acc[:hposition]+number);
+    {"down",number}, acc -> Keyword.put(acc, :depth, acc[:depth]+number);
+      {"up",number}, acc -> Keyword.put(acc, :depth, acc[:depth]-number)
+    end)
+  end
 end
