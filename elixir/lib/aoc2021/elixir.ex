@@ -61,22 +61,97 @@ defmodule Aoc2021.Elixir do
       1868935
   """
   def do_day2_exercise(file_path) do
-    matter =
-      file_path
-      |> File.stream!()
-      |> Stream.map(fn line -> [command, raw] = String.split(line, [" ","\n"], trim: true)
-      {command, String.to_integer(raw)}
-    end)
+    file_path
+    |> File.stream!()
+    |> parse_command()
     |> operate_submarine!()
-      matter[:hposition] * matter[:depth]
   end
 
-  @spec operate_submarine!(commands :: Stream.t(), position :: Keyword.t()) :: (matter :: Integer.t())
-  defp operate_submarine!(commands, position \\ [hposition: 0, depth: 0]) do
+  @spec parse_command(stream :: File.Stream.t()) :: (commands :: Stream.t())
+  defp parse_command(stream) do
+    stream
+    |> Stream.map(fn line -> [command, raw] = String.split(line, [" ","\n"], trim: true)
+      {command, String.to_integer(raw)}
+    end)
+  end
+
+  @spec operate_submarine(commands :: Stream.t(), position :: Keyword.t()) :: (matter :: Keyword.t())
+  defp operate_submarine(commands, position \\ [hposition: 0, depth: 0]) do
     commands
     |> Enum.reduce(position, fn {"forward",number}, acc -> Keyword.put(acc, :hposition, acc[:hposition]+number);
     {"down",number}, acc -> Keyword.put(acc, :depth, acc[:depth]+number);
       {"up",number}, acc -> Keyword.put(acc, :depth, acc[:depth]-number)
     end)
   end
+
+  @spec operate_submarine!(stream :: Stream.t()) :: (result :: Integer.t())
+  defp operate_submarine!(stream) do
+    matter =
+      stream
+      |> operate_submarine()
+    matter[:hposition] * matter[:depth]
+  end
+
+  @doc """
+  Day2/Part2: dive by aiming.
+
+  ## Examination
+
+      iex> Stream.concat([[{"forward",5}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == 5*0
+      true
+
+      iex> Stream.concat([[{"forward",5},{"down",5}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == 5*0
+      true
+
+      iex> Stream.concat([[{"forward",5},{"down",5},{"forward",8}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == (5+8)*(8*5)
+      true
+
+      iex> Stream.concat([[{"forward",5},{"down",5},{"forward",8},{"up",3}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == (5+8)*(8*5)
+      true
+
+      iex> Stream.concat([[{"forward",5},{"down",5},{"forward",8},{"up",3},{"down",8}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == (5+8)*(8*5)
+      true
+
+      iex> Stream.concat([[{"forward",5},{"down",5},{"forward",8},{"up",3},{"down",8},{"forward",2}]])
+      ...> |> Aoc2021.Elixir.conclude_dive!() == (5+8+2)*(8*5+2*10)
+      true
+
+      iex> Aoc2021.Elixir.do_day2_part2_exercise("../inputs/day2_input.txt")
+      1965970888
+  """
+  def do_day2_part2_exercise(file_path) do
+    file_path
+    |> File.stream!()
+    |> parse_command()
+    |> conclude_dive!()
+  end
+
+  def conclude_dive!(commands) do
+    commands
+    |> operate_submarine_by_aiming()
+    |> conclude_dive()
+  end
+
+  @spec operate_submarine_by_aiming(commands :: Stream.t(), position :: Keyword.t()) :: (matter :: Keyword.t())
+  defp operate_submarine_by_aiming(commands, position \\ [hposition: 0, depth: 0, aim: 0]) do
+    commands
+    |> Enum.reduce(position, fn {"forward",number}, acc ->
+      acc
+      |> Keyword.put(:hposition, acc[:hposition]+number)
+      |> Keyword.put(:depth,     acc[:depth]+number*acc[:aim]);
+    {"down",number}, acc -> Keyword.put(acc, :aim, acc[:aim]+number);
+      {"up",number}, acc -> Keyword.put(acc, :aim, acc[:aim]-number)
+    end)
+  end
+
+  @spec conclude_dive(matter :: Keyword.t()) :: (result :: Integer.t())
+  defp conclude_dive(matter) do
+    matter[:hposition] * matter[:depth]
+  end
+
 end
