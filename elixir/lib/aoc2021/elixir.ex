@@ -188,9 +188,77 @@ defmodule Aoc2021.Elixir do
   ## Examination
 
       iex> Aoc2021.Elixir.do_day3_part2_exercise("../inputs/day3_input.txt")
-      :not_impl
+      1613181
   """
   def do_day3_part2_exercise(file_path) do
-    :not_impl
+    file_path
+    |> File.stream!()
+    |> parse_line()
+    |> Stream.map(&String.to_charlist/1)
+    |> init_oxygen_CO2_profile()
+    |> find_oxygen_CO2_ratings()
+    |> conclude_oxygen_CO2_profile()
+    |> Kernel.then(&([
+          &1[:o] |> List.first() |> List.to_integer(2),
+          &1[:c] |> List.first() |> List.to_integer(2)
+        ]))
+    |> Kernel.then(&(List.first(&1)*List.last(&1)))
+  end
+
+  @spec init_oxygen_CO2_profile(Stream.t()) :: [{ :iter, number()} | { :o|:c, Stream.t() }]
+  defp init_oxygen_CO2_profile(stream) do
+    [ iter: 2,
+      o: stream |> Stream.filter(&([List.first(&1)]=='1')),
+      c: stream |> Stream.filter(&([List.first(&1)]=='0'))
+    ]
+  end
+
+  defp find_oxygen_CO2_ratings([iter: i, o: o, c: c] = profile, iter \\ 12) do
+    lo = o |> Enum.count()
+    lc = c |> Enum.count()
+    if i > iter or (lo == 1 and lc == 1) do
+      profile
+    else
+      [ iter: i+1,
+        o: if(i > iter or lo == 1, do: o, else: separate_by_common(i,o,:most)),
+        c: if(i > iter or lc == 1, do: c, else: separate_by_common(i,c,:least))
+      ]
+      |> find_oxygen_CO2_ratings()
+    end
+  end
+
+  @spec separate_by_common(Integer.i(), Stream.t(), :most | :least) :: Stream.t()
+  defp separate_by_common(i, stream, common_by) do
+    {o, c} = {
+      stream |> Stream.filter(&([Enum.at(&1,i-1)]=='1')),
+      stream |> Stream.filter(&([Enum.at(&1,i-1)]=='0')),
+    }
+    {lo, lc} = {
+      o |> Enum.count(),
+      c |> Enum.count()
+    }
+    case common_by do
+      :most ->
+        if lo == lc do
+          o
+        else
+          if(lo > lc, do: o, else: c)
+        end
+      :least ->
+        if lo == lc do
+          c
+        else
+          if(lo > lc, do: c, else: o)
+        end
+    end
+  end
+
+  defp conclude_oxygen_CO2_profile([iter: i, o: o, c: c]) do
+    [ iter: i,
+      lo: o |> Enum.count(),
+      lc: c |> Enum.count(),
+      o: o |> Enum.to_list(),
+      c: c |> Enum.to_list()
+    ]
   end
 end
