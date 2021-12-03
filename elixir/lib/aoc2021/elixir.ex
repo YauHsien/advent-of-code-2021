@@ -154,4 +154,43 @@ defmodule Aoc2021.Elixir do
     matter[:hposition] * matter[:depth]
   end
 
+  @spec parse_line(stream :: File.Stream.t()) :: (lines :: Stream.t())
+  defp parse_line(stream) do
+    stream
+    |> Stream.map(fn line -> [line1] = String.split(line, ["\n"], trim: true)
+      line1
+    end)
+  end
+
+  @doc """
+  ## Examination
+
+      iex> Aoc2021.Elixir.do_day3_exercise("../inputs/day3_input.txt")
+      3958484
+  """
+  def do_day3_exercise(file_path) do
+    file_path
+    |> File.stream!()
+    |> parse_line()
+    |> Stream.map(&String.to_charlist/1)
+    |> Stream.zip_with(&binary_diagnostic/1)
+    |> Stream.zip_with(&(&1 |> List.flatten() |> List.to_integer(2)))
+    |> Enum.to_list()
+    |> List.foldl(1, &*/2)
+  end
+
+  defp binary_diagnostic(list) do
+    {first, second} = {Enum.count(list), Enum.count(list,&([&1]=='0'))}
+    if(first-second > second, do: ['1','0'], else: ['0','1'])
+  end
+
+  @doc """
+  ## Examination
+
+      iex> Aoc2021.Elixir.do_day3_part2_exercise("../inputs/day3_input.txt")
+      :not_impl
+  """
+  def do_day3_part2_exercise(file_path) do
+    :not_impl
+  end
 end
