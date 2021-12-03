@@ -15,6 +15,7 @@ collect_input([row(Input)|Rest], [Codes|Rest1]) :-
 
 data_len([], 0).
 data_len([E], N) :-
+    !,
     length(E, N).
 data_len([E|T], N) :-
     data_len(T, N1),
@@ -76,10 +77,84 @@ binary_codes_integer([48|Rest], Acc, DecimalExp) :-
 
 %% -- Part2 ---------------------------------------------------------
 
-%report_life_support_rating(FilePath, InputList) :-
-%    csv_read_file(FilePath, RawList, [convert(false)]),
-%    collect_input(RawList, InputList).
+collect_input_with_indices([], []).
+collect_input_with_indices([row(Input)|Rest], [Index/Input|Rest1]) :-
+    atom(Input),
+    !,
+    atom_chars(Input, Index),
+    collect_input_with_indices(Rest, Rest1).
+
+report_life_support_rating(FilePath, LifeSupportRating) :-
+    csv_read_file(FilePath, RawList, [convert(false)]),
+    collect_input_with_indices(RawList, InputList),
+    partition(InputList, [], [], Group1i, Group2i),
+    determine(Group1i, Group2i, most_common, G1i, G2i),
+    go_with(G1i, most_common, [OxygenGeneratorRating]),
+    go_with(G2i, least_common, [CO2ScrubberRating]),
+    atom_decimal(OxygenGeneratorRating, O),
+    atom_decimal(CO2ScrubberRating, C),
+    LifeSupportRating is (O) * (C).
+
+partition([], Group1, Group2, Group1, Group2).
+partition([Item|List], Group1, Group2, Group1f, Group2f) :-
+    classify(Item, Group1, Group2, Group1a, Group2a),
+    partition(List, Group1a, Group2a, Group1f, Group2f).
+
+classify(['1'|Index]/Value, Group1, Group2, [Index/Value|Group1], Group2).
+classify(['0'|Index]/Value, Group1, Group2, Group1, [Index/Value|Group2]).
+
+determine(Group1, Group2, most_common, G1, G2) :-
+    length(Group1, L1),
+    length(Group2, L2),
+    (L1 >= L2,
+     !,
+     G1 = Group1,
+     G2 = Group2;
+     G1 = Group2,
+     G2 = Group1
+    ).
+determine(Group1, Group2, least_common, G1, G2) :-
+    length(Group1, L1),
+    length(Group2, L2),
+    (L1 < L2,
+     !,
+     G1 = Group1,
+     G2 = Group2;
+     G1 = Group2,
+     G2 = Group1
+    ).
+
+go_with1(Group, CommonBy, GroupR) :-
+    partition(Group, [], [], G1, G2),
+    determine(G1, G2, CommonBy, Group1, _Group2),
+    GroupR = Group1.
+
+go_with([[]/Found], _, [Found]) :-
+    !.
+go_with([_/Found], _, [Found]) :-
+    !.
+go_with(Group, CommonBy, GroupR) :-
+    partition(Group, [], [], G1, G2),
+    determine(G1, G2, CommonBy, Group1, _Group2),
+    go_with(Group1, CommonBy, GroupR).
+
+atom_decimal(Atom, Dec) :-
+    atom_chars(Atom, Chars),
+    chars_decimal(Chars, Dec).
+
+chars_decimal(Codes, DecimalExp) :-
+    chars_decimal(Codes, 0, DecimalExp).
+
+chars_decimal(['1'], Acc, Acc+1).
+chars_decimal(['0'], Acc, Acc) :-
+    !.
+chars_decimal(['1'|Rest], Acc, DecimalExp) :-
+    !,
+    length(Rest, L),
+    chars_decimal(Rest, Acc+(2**L), DecimalExp).
+chars_decimal(['0'|Rest], Acc, DecimalExp) :-
+    chars_decimal(Rest, Acc, DecimalExp).
 
 %% -- Solutions -------------------------------------------------
 :- report_power_consumption('../inputs/day3_input.txt', 3958484).
-%:- report_life_support_rating('../inputs/day3_input.txt', 1613181).
+:- report_life_support_rating('../inputs/day3_input.txt', 1613181).
