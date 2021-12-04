@@ -87,32 +87,80 @@ build_board([Row|Rest], Buffer, Board) :-
 configure_commands(row(SepAtom), Commands) :-
     !,
     atom_chars(SepAtom, Chars),
-    configure_commands(Chars, Commands).
-configure_commands(Chars, Commands) :-
     configure_commands(Chars, [[]], Commands).
 
 configure_commands([], [Chars|Acc], Commands) :-
     reverse(Chars, Chars1),
     atom_chars(Atom, Chars1),
-    reverse([Atom|Acc], Commands).
-configure_commands([0',|Rest], [Chars|Acc], Commands) :-
+    atom_number(Atom, Number),
+    reverse([Number|Acc], Commands).
+configure_commands([','|Rest], [Chars|Acc], Commands) :-
     reverse(Chars, Chars1),
     atom_chars(Atom, Chars1),
-    configure_commands(Rest, [[]|[Atom|Acc]], Commands).
+    atom_number(Atom, Number),
+    configure_commands(Rest, [[]|[Number|Acc]], Commands).
 configure_commands([C|Rest], [Chars|Acc], Commands) :-
     C \= 0',,
     configure_commands(Rest, [[C|Chars]|Acc], Commands).
 
-play_bingo(RawList, RawList).
+mark_boards(_N, [], []).
+mark_boards(N, [Board|Boards], [Board1|Boards1]) :-
+    mark_board(N, Board, Board1),
+    mark_boards(N, Boards, Boards1).
+
+mark_board(_N, [], []).
+mark_board(N, [Line|Board], [New_line|New_board]) :-
+    is_list(Line),
+    !,
+    mark_board(N, Line, New_line),
+    mark_board(N, Board, New_board).
+mark_board(N, [N|Line], [m(N)|New_line]) :-
+    !,
+    mark_board(N, Line, New_line).
+mark_board(N, [M|Line], [M|New_line]) :-
+    mark_board(N, Line, New_line).
+
+add_up_non_marked_numbers([], 0).
+add_up_non_marked_numbers([List|Board], N_list+N_board) :-
+    is_list(List),
+    !,
+    add_up_non_marked_numbers(List, N_list),
+    add_up_non_marked_numbers(Board, N_board).
+add_up_non_marked_numbers([N|List], N+N_list) :-
+    number(N),
+    !,
+    add_up_non_marked_numbers(List, N_list).
+add_up_non_marked_numbers([_|List], N_list) :-
+    add_up_non_marked_numbers(List, N_list).
+
+bingo([[m(_), m(_), m(_), m(_), m(_)]|_Rest]) :- !.
+bingo([_|List]) :- bingo(List), !.
+bingo([[m(_)|_], [m(_)|_], [m(_)|_], [m(_)|_], [m(_)|_]]) :- !.
+bingo([[_|R1], [_|R2], [_|R3], [_|R4], [_|R5]]) :- bingo([R1,R2,R3,R4,R5]).
+
+play_bingo(Boards, [], nil, []).
+play_bingo(Boards, [Command|Commands], BingoNumber, BingoBoards) :-
+    mark_boards(Command, Boards, Boards1),
+    (bagof(Board, (member(Board,Boards1), bingo(Board)), BingoBoards),
+     !,
+     BingoNumber = Command;
+     play_bingo(Boards1, Commands, BingoNumber, BingoBoards)
+    ).
 
 %% -- Solution -----------------------------------
 file_path('../inputs/day4_input.txt').
 :- file_path(FilePath),
    csv_read_file(FilePath, InputRows, [strip(true),separator(0'\s),match_arity(false)]),
    configure(InputRows, Commands, Boards),
-   write('Boards: '),
-   write(Boards),
+   play_bingo(Boards, Commands, Just_called, [Board|Others]),
+   format("Bingo #: ~p~n", [Just_called]),
+   write('Bingo baord: '),
+   write(Board),
    write('\n'),
-   write('Command: '),
-   write(Commands).
-
+   write('Other bingo board(s): '),
+   write(Others),
+   write('\n'),
+   add_up_non_marked_numbers(Board, Sum),
+   Final_score is Just_called * (Sum),
+   format("Final score: ~p~n", [Final_score]),
+   true.
