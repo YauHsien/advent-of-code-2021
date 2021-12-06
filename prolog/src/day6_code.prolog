@@ -102,15 +102,16 @@ until_day(Day_nth, Days_acc, Clocks_acc, Clocks) :-
     Days_acc_1 is Days_acc + Days,
     length(Clocks_1, N),
     clumped(Clocks_1, G),
-    format("day #~I: ~I ~p~n", [Days_acc_1, N, G]),
+    %format("day #~I: ~I ~p~n", [Days_acc_1, N, G]),
     (Days_acc_1 > Day_nth,
      !,
+     format("day #~I: ~I ~p~n", [Days_acc_1, N, G]),
      Clocks = Clocks_acc;
      until_day(Day_nth, Days_acc_1, Clocks_1, Clocks)
     ).
 
 %% -- Solution ---------------------------
-:- data(Clocks),
+solution_1:- data(Clocks),
    format("~p~n", [Clocks]),
    until_day(80, 0, Clocks, New),
    length(New, N),
@@ -118,3 +119,60 @@ until_day(Day_nth, Days_acc, Clocks_acc, Clocks) :-
    format("final: ~I ~p~n", [N,G]),
    true.
 
+%% --- Part Two ---
+%% Suppose the lanternfish live forever and have unlimited food and space. Would they take over the entire ocean?
+%
+%% After 256 days in the example above, there would be a total of 26984457539 lanternfish!
+%
+%% How many lanternfish would there be after 256 days?
+
+clumped_down_to_birth(Clocks, Days, New_clocks) :-
+    [Min_clock-New_born_count|_] = Clocks,
+    findall(N-C, (member(E-C,Clocks),
+                  next_clock(E,Min_clock,N)), [6-Count_0|New_clocks_1]),
+    (member(6-_, New_clocks_1),
+     !,
+     findall(E-C, (member(E-C1,New_clocks_1),
+                   (E=:=6, C is C1+Count_0; E=\=6, C is C1)), New_clocks_2);
+     predsort(clumped_compare, [6-Count_0|New_clocks_1], New_clocks_2)
+    ),
+    %format("o: ~p~n", [Clocks]),
+    %format("p: ~p~n", [New_clocks_1]),
+    %format("a: ~p~n", [New_clocks_2]),
+    (member(8-_,New_clocks_2),
+     !,
+     findall(E-C, (member(E-C1,New_clocks_2),
+                   (E=:=8, C is C1+New_born_count; E=\=8, C is C1)), New_clocks);
+     append(New_clocks_2, [8-New_born_count], New_clocks)
+    ),
+    Days is Min_clock + 1.
+
+clumped_compare('<', N-_, M-_) :-
+    N < M.
+clumped_compare('>', N-_, M-_) :-
+    N > M.
+clumped_compare('=', N-_, M-_) :-
+    N =:= M.
+
+clumped_until_day(Day_nth, Days_acc, Clocks_acc, Clocks) :-
+    clumped_down_to_birth(Clocks_acc, Days, Clocks_1),
+    Days_acc_1 is Days_acc + Days,
+    findall(N, member(_-N,Clocks_1), Fish_count_list),
+    sumlist(Fish_count_list, N),
+    %format("day #~I: ~I ~p~n", [Days_acc_1, N, Clocks_1]),
+    (Days_acc_1 > Day_nth,
+     !,
+     format("day #~I: ~I ~p~n", [Days_acc_1, N, Clocks_1]),
+     Clocks = Clocks_acc;
+     clumped_until_day(Day_nth, Days_acc_1, Clocks_1, Clocks)
+    ).
+
+%% -- Solution -----------------------
+solution_2 :- data(Clocks),
+   msort(Clocks, Clocks_1),
+   clumped(Clocks_1, Clumped_clocks),
+   format("init: ~p~n", [Clumped_clocks]),
+   clumped_until_day(256, 0, Clumped_clocks, G),
+   findall(N, member(_-N,G), Ns),
+   sumlist(Ns, N),
+   format("final: ~I ~p~n", [N,G]).
