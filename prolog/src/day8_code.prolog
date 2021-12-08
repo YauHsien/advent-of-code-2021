@@ -79,19 +79,19 @@ input_atom_list([row(I0,I1,I2,I3,I4,I5,I6,I7,I8,I9,'|',O0,O1,O2,O3)|Rows], [[I0,
 
 %% In the output values, how many times do digits 1, 4, 7, or 8 appear?
 
-segments_display(2, 1).
-segments_display(3, 7).
-segments_display(4, 4).
-segments_display(5, 2).
-segments_display(5, 3).
-segments_display(5, 5).
-segments_display(6, 0).
-segments_display(6, 6).
-segments_display(6, 9).
-segments_display(7, 8).
+segments_count_display(2, 1).
+segments_count_display(3, 7).
+segments_count_display(4, 4).
+segments_count_display(5, 2).
+segments_count_display(5, 3).
+segments_count_display(5, 5).
+segments_count_display(6, 0).
+segments_count_display(6, 6).
+segments_count_display(6, 9).
+segments_count_display(7, 8).
 
 displays_segments_list(Displays, Data, Result) :-
-    findall(Segments-Display, (member(Display,Displays),segments_display(Segments,Display)), Segment_count_list),
+    findall(Segments-Display, (member(Display,Displays),segments_count_display(Segments,Display)), Segment_count_list),
     findall(Common, (member(Input-Output,Data),displays_segments_list(Segment_count_list,Input,Output,Common)), Result_list),
     %format("r: ~p~n", [Result_list]),
     flatten(Result_list, List1),
@@ -165,3 +165,292 @@ solution :-
 
 %% For each entry, determine all of the wire/segment connections and decode the four-digit output values. What do you get if you add up all of the output values?
 
+guess_list(Inputs, Result) :-
+    findall(Answer, (member(Input-Output,Inputs),
+                     guess(Input,Output,Answer),
+                     format("~p~n",[Output-Answer])
+                    ), Result_list1),
+    sumlist(Result_list1, Result).
+
+guess(Input, Output, Answer) :-
+    common_guess(Input, Guess),
+    determine(Guess, SSD),
+    prepare_SSD(SSD, Mapping),
+    findall(A, (member(Atom,Output),render_by(Mapping,Atom,N),atom_number(A,N)), Ns),
+    atom_chars(Atom, Ns),
+    atom_number(Atom, Answer).
+
+common_guess(Input, Guess) :-
+    findall(I-Guess, (member(I, Input),
+                      segment_guess(I, Guess)
+                     ), Guess_list),
+    findall(I-Gs, (member(I,Input),findall(G,member(I-G,Guess_list),Gs)), Guess_list_1),
+    combinations(Guess_list_1, Guess).
+
+segment_guess(Atom, Guess) :-
+    atom_chars(Atom, List),
+    length(List, N),
+    segments_count_display(N, Guess).
+
+combinations([], []).
+combinations([H-List|T], [H-I|T1]) :-
+    member(I, List),
+    combinations(T, T1).
+
+determine([List|Lists], SSD) :-
+    is_list(List),
+    !,
+    flatten([List|Lists], List_1),
+    determine(List_1, SSD).
+determine(List, SSD) :-
+    seven_segments_display(SSD),
+    foreach(member(A-D, List),
+            can_render(D, A, SSD)),
+    determined_SSD(SSD).
+
+seven_segments_display(
+    (A, B, C, E, F, G,    % For '0' rendering
+     C, F,                % For '1' rendering
+     A, C, D, E, G,       % For '2' rendering
+     A, C, D, F, G,       % For '3' rendering
+     B, C, D, F,          % For '4' rendering
+     A, B, D, F, G,       % For '5' rendering
+     A, B, D, E, F, G,    % For '6' rendering
+     A, C, F,             % For '7' rendering
+     A, B, C, D, E, F, G, % For '8' rendering
+     A, B, C, D, F, G     % For '9' rendering
+    )).
+
+can_render(Display, Atom, SSD) :-
+    atom(Atom),
+    !,
+    atom_chars(Atom, Signals),
+    can_render(Display, Signals, SSD).
+can_render(0, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,B,C,E,F,G]).
+can_render(1, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [C,F]).
+can_render(2, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,C,D,E,G]).
+can_render(3, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,C,D,F,G]).
+can_render(4, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [B,C,D,F]).
+can_render(5, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,B,D,F,G]).
+can_render(6, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,B,D,E,F,G]).
+can_render(7, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,C,F]).
+can_render(8, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,B,C,D,E,F,G]).
+can_render(9, Signals, (A, B, C, E, F, G,    % For '0' rendering
+                        C, F,                % For '1' rendering
+                        A, C, D, E, G,       % For '2' rendering
+                        A, C, D, F, G,       % For '3' rendering
+                        B, C, D, F,          % For '4' rendering
+                        A, B, D, F, G,       % For '5' rendering
+                        A, B, D, E, F, G,    % For '6' rendering
+                        A, C, F,             % For '7' rendering
+                        A, B, C, D, E, F, G, % For '8' rendering
+                        A, B, C, D, F, G     % For '9' rendering
+                       )) :-
+    permutation(Signals, [A,B,C,D,F,G]).
+
+render_by(SSD, Atom, Number) :-
+    prepare_SSD(SSD, Mapping),
+    !,
+    render_by(Mapping, Atom, Number).
+render_by(Mapping, Atom, Number) :-
+    atom(Atom),
+    !,
+    sort_atom(Atom, Sort),
+    findall(N, member(Sort-N,Mapping), [Number]).
+
+prepare_SSD(SSD, [Zero-0,One-1,Two-2,Three-3,Four-4,Five-5,Six-6,Seven-7,Eight-8,Nine-9]) :-
+    seven_segments_display(SSD),
+    determined_SSD(SSD),
+    (A, B, C, E, F, G,    % For '0' rendering
+     C, F,                % For '1' rendering
+     A, C, D, E, G,       % For '2' rendering
+     A, C, D, F, G,       % For '3' rendering
+     B, C, D, F,          % For '4' rendering
+     A, B, D, F, G,       % For '5' rendering
+     A, B, D, E, F, G,    % For '6' rendering
+     A, C, F,             % For '7' rendering
+     A, B, C, D, E, F, G, % For '8' rendering
+     A, B, C, D, F, G     % For '9' rendering
+    ) = SSD,
+    atom_chars(Z,  [A,B,C,E,F,G]),
+    sort_atom(Z, Zero),
+    atom_chars(O,   [C,F]),
+    sort_atom(O, One),
+    atom_chars(T,   [A,C,D,E,G]),
+    sort_atom(T, Two),
+    atom_chars(Th, [A,C,D,F,G]),
+    sort_atom(Th, Three),
+    atom_chars(Fo,  [B,C,D,F]),
+    sort_atom(Fo, Four),
+    atom_chars(Fi,  [A,B,D,F,G]),
+    sort_atom(Fi, Five),
+    atom_chars(S,   [A,B,D,E,F,G]),
+    sort_atom(S, Six),
+    atom_chars(Se, [A,C,F]),
+    sort_atom(Se, Seven),
+    atom_chars(Ei, [A,B,C,D,E,F,G]),
+    sort_atom(Ei, Eight),
+    atom_chars(N,  [A,B,C,D,F,G]),
+    sort_atom(N, Nine).
+
+show_SSD((A, B, C, E, F, G,    % For '0' rendering
+          C, F,                % For '1' rendering
+          A, C, D, E, G,       % For '2' rendering
+          A, C, D, F, G,       % For '3' rendering
+          B, C, D, F,          % For '4' rendering
+          A, B, D, F, G,       % For '5' rendering
+          A, B, D, E, F, G,    % For '6' rendering
+          A, C, F,             % For '7' rendering
+          A, B, C, D, E, F, G, % For '8' rendering
+          A, B, C, D, F, G     % For '9' rendering
+         )) :-
+    format("(~p~n~p~n~p~n~p~n~p~n~p~n~p~n~p~n~p~n~p~n)~n",
+           [[A,B,C,E,F,G],
+            [C,F],
+            [A,C,D,E,G],
+            [A,C,D,F,G],
+            [B,C,D,F],
+            [A,B,D,F,G],
+            [A,B,D,E,F,G],
+            [A,C,F],
+            [A,B,C,D,E,F,G],
+            [A,B,C,D,F,G]
+           ]).
+
+determined_SSD(
+    (A, B, C, E, F, G,    % For '0' rendering
+     C, F,                % For '1' rendering
+     A, C, D, E, G,       % For '2' rendering
+     A, C, D, F, G,       % For '3' rendering
+     B, C, D, F,          % For '4' rendering
+     A, B, D, F, G,       % For '5' rendering
+     A, B, D, E, F, G,    % For '6' rendering
+     A, C, F,             % For '7' rendering
+     A, B, C, D, E, F, G, % For '8' rendering
+     A, B, C, D, F, G     % For '9' rendering
+    )) :-
+    forall(member(T,[A,B,C,D,E,F,G]), not(var(T))).
+
+test_SSD(S) :-
+    seven_segments_display(S),
+    can_render(0, [a,b,c,e,f,g], S),
+    can_render(1, [c,f], S),
+    can_render(2, [a,c,d,e,g], S),
+    can_render(3, [a,c,d,f,g], S),
+    can_render(4, [b,c,d,f], S),
+    can_render(5, [a,b,d,f,g], S),
+    can_render(6, [a,b,d,e,f,g], S),
+    can_render(7, [a,c,f], S),
+    can_render(8, [a,b,c,d,e,f,g], S),
+    can_render(9, [a,b,c,d,f,g], S),
+    show_SSD(S),
+    (determined_SSD(S),
+     !,
+     format("This SSD is determined.");
+     format("This SSD is NOT full-determined.")
+    ).
+
+solution_2 :-
+    data(Input),
+    guess_list(Input, Result),
+    format("count: ~p~n", [Result]),
+    true.
