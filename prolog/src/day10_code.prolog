@@ -155,3 +155,65 @@ solution :-
 %% Autocomplete tools are an odd bunch: the winner is found by sorting all of the scores and then taking the middle score. (There will always be an odd number of scores to consider.) In this example, the middle score is 288957 because there are the same number of scores smaller and larger than it.
 
 %% Find the completion string for each incomplete line, score the completion strings, and sort the scores. What is the middle score?
+
+points_2(')', 1).
+points_2(']', 2).
+points_2('}', 3).
+points_2('>', 4).
+
+incomplete(Atom, Found_acc, Expected_acc, Expected, Found) :-
+    atom(Atom),
+    !,
+    atom_chars(Atom, List),
+    %format("processing ~p: ~p ~p~n", [List,Found_acc,Expected]),
+    incomplete(List, Found_acc, Expected_acc, Expected, Found).
+incomplete([], Found_acc, Expected, Expected, Found) :-
+    [] \= Expected,
+    !,
+    reverse(Found_acc, R_f_a),
+    atom_chars(Found, R_f_a).
+incomplete([H|T], Found_acc, [H|Expected_acc], Expected, Found) :-
+    closed(H),
+    !,
+    %format("closed way~n"),
+    incomplete(T, [H|Found_acc], Expected_acc, Expected, Found).
+incomplete([H|T], Found_acc, Expected_acc, Expected, Found) :-
+    open(H),
+    !,
+    %format("open way~n"),
+    met_expecting(H, E),
+    incomplete(T, [H|Found_acc], [E|Expected_acc], Expected, Found).
+incomplete(_Code, _Found_acc, _Expected_acc, _Expected, _Found) :-
+    %format("FOMO: ~p ~p ~p~n", [_Code, _Found_acc, _Expected_acc]),
+    fail.
+
+sum_points([], Sum, Sum).
+sum_points([N|Rest], Acc, Sum) :-
+    sum_points(Rest, (Acc * 5 + N), Sum).
+
+mid_score(List, Score) :-
+    msort(List, List_1),
+    length(List, N),
+    I is div(N, 2),
+    nth0(I, List_1, Score).
+
+solution_2 :-
+    data(Input),
+    findall(Points1,
+            (member(Code,Input),
+             not(corrupted(Code,[],[],_,_,_)),
+             incomplete(Code, [], [], Expected, Found),
+             %format("input: ~p~nafter: ~p; found: ~p; expected: ~p~n", [Code,Found,Expected])%,
+             findall(Point, (member(E,Expected),points_2(E, Point)), Points1)
+            ),
+            Points),
+    findall(S1,
+            (member(Ps, Points),
+             sum_points(Ps, 0, S),
+             S1 is S,
+             %format("add up ~p to ~p = ~p~n", [Ps,S,S1]),
+             true
+            ),
+            Sums),
+    mid_score(Sums, Score),
+    format("Mid score: ~I~n", [Score]).
