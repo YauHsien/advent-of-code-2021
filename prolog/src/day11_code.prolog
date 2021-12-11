@@ -565,3 +565,70 @@ solution :-
     format("~I = ~p~n", [Count, Count]),
 
     true.
+
+%% --- Part Two ---
+%% It seems like the individual flashes aren't bright enough to navigate. However, you might have a better option: the flashes seem to be synchronizing!
+
+%% In the example above, the first time all octopuses flash simultaneously is step 195:
+
+%% After step 193:
+%% 5877777777
+%% 8877777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+%% 7777777777
+
+%% After step 194:
+%% 6988888888
+%% 9988888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+%% 8888888888
+
+%% After step 195:
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% 0000000000
+%% If you can calculate the exact moments when the octopuses will all flash simultaneously, you should be able to navigate through the cavern. What is the first step during which all octopuses flash?
+
+
+barely_find_flash_sync_times(Lists, Count) :-
+    barely_find_flash_sync_times(Lists, 1, Count).
+
+barely_find_flash_sync_times(Lists, N, Count) :-
+    N1 is N + 1,
+    step(Lists, Result, _),
+    (verify_sync(Result),
+     !,
+     Count = N,
+     show(Result);
+     barely_find_flash_sync_times(Result, N1, Count)).
+
+verify_sync(Lists) :-
+    forall(member(List_0, Lists),
+           forall(member(E, List_0),
+                  (b = E; 0 =:= E))).
+solution_2 :-
+    data(Input),
+    prepare(Input, Input_1),
+    barely_find_flash_sync_times(Input_1, Count),
+    format("~I~n", [Count]),
+
+    true.
