@@ -18,6 +18,27 @@ input_term(Atom, link(X,Y)) :-
     atom_prefix(Y1, '-'),
     atom_concat('-', Y, Y1).
 
+load_data(Data) :-
+    retractall(link(_,_)),
+    foreach(member(link(X,Y), Data),
+            ((link(X, Y),
+              !;
+              assertz(link(X,Y))
+             ),
+             (link(X, Y),
+              format("loaded ~p.~n", [link(X,Y)]),
+              !;
+              true
+             )
+            )
+           ),
+    data_conclusion.
+
+data_conclusion :-
+    findall(link(X,Y), link(X,Y), Data),
+    length(Data, Length),
+    format("~p items.~n", [Length]).
+
 %% --- Day 12: Passage Pathing ---
 %With your submarine's subterranean subsystems subsisting suboptimally, the only way you're getting out of this cave anytime soon is by finding a path yourself. Not just a path - the only way to know if you've found the best path is to find all of them.
 %
@@ -112,13 +133,6 @@ input_term(Atom, link(X,Y)) :-
 %start-RW
 %How many paths through this cave system are there that visit small caves at most once?
 
-find_path(Path, Path) :-
-    member(edge(start,_), Path),
-    !.
-find_path(Path, Path1) :-
-    path(Path, Path2),
-    find_path(Path2, Path1).
-
 path([], Path) :-
     edge(X, end),
     path([edge(X,end)], Path).
@@ -163,11 +177,12 @@ small(X) :-
 
 solution :-
     data(Input),
-    foreach(member(Link, Input),
-            (Link,!;
-             not(Link),assertz(Link))),
-    findall(Path, path([],Path), Paths),
-    format("~p~n", [Paths]),
-    length(Paths, N),
-    format("count: ~I~n", [N]),
+    load_data(Input),
+    findall(Path,
+            path([],Path),
+            Paths),
+    foreach(member(Path, Paths),
+            format("path ~p~n", [Path])),
+    length(Paths, Length),
+    format("~I paths~n", [Length]),
     true.
