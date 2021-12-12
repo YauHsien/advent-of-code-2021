@@ -37,7 +37,7 @@ load_data(Data) :-
 data_conclusion :-
     findall(link(X,Y), link(X,Y), Data),
     length(Data, Length),
-    format("~p items.~n", [Length]).
+    format("~I links.~n", [Length]).
 
 %% --- Day 12: Passage Pathing ---
 %With your submarine's subterranean subsystems subsisting suboptimally, the only way you're getting out of this cave anytime soon is by finding a path yourself. Not just a path - the only way to know if you've found the best path is to find all of them.
@@ -143,8 +143,8 @@ path([edge(X,Y)|Acc], Path) :-
      Path = [edge(Z,X),edge(X,Y)|Acc];
      start \= Z,
      small(Z),
-     not(member(edge(_,Z),Acc)),
-     not(member(edge(Z,_),Acc)),
+     not((member(edge(_,Z),[edge(X,Y)|Acc]),
+          member(edge(Z,_),[edge(X,Y)|Acc]))),
      %format("~p~p~n", [edge(Z,X),Acc]),
      path([edge(Z,X),edge(X,Y)|Acc], Path);
      start \= Z,
@@ -183,6 +183,136 @@ solution :-
             Paths),
     foreach(member(Path, Paths),
             format("path ~p~n", [Path])),
+    length(Paths, Length),
+    format("~I paths~n", [Length]),
+    true.
+
+%% --- Part Two ---
+%% After reviewing the available paths, you realize you might have time to visit a single small cave twice. Specifically, big caves can be visited any number of times, a single small cave can be visited at most twice, and the remaining small caves can be visited at most once. However, the caves named start and end can only be visited exactly once each: once you leave the start cave, you may not return to it, and once you reach the end cave, the path must end immediately.
+%
+%% Now, the 36 possible paths through the first example above are:
+%
+%% start,A,b,A,b,A,c,A,end
+%% start,A,b,A,b,A,end
+%% start,A,b,A,b,end
+%% start,A,b,A,c,A,b,A,end
+%% start,A,b,A,c,A,b,end
+%% start,A,b,A,c,A,c,A,end
+%% start,A,b,A,c,A,end
+%% start,A,b,A,end
+%% start,A,b,d,b,A,c,A,end
+%% start,A,b,d,b,A,end
+%% start,A,b,d,b,end
+%% start,A,b,end
+%% start,A,c,A,b,A,b,A,end
+%% start,A,c,A,b,A,b,end
+%% start,A,c,A,b,A,c,A,end
+%% start,A,c,A,b,A,end
+%% start,A,c,A,b,d,b,A,end
+%% start,A,c,A,b,d,b,end
+%% start,A,c,A,b,end
+%% start,A,c,A,c,A,b,A,end
+%% start,A,c,A,c,A,b,end
+%% start,A,c,A,c,A,end
+%% start,A,c,A,end
+%% start,A,end
+%% start,b,A,b,A,c,A,end
+%% start,b,A,b,A,end
+%% start,b,A,b,end
+%% start,b,A,c,A,b,A,end
+%% start,b,A,c,A,b,end
+%% start,b,A,c,A,c,A,end
+%% start,b,A,c,A,end
+%% start,b,A,end
+%% start,b,d,b,A,c,A,end
+%% start,b,d,b,A,end
+%% start,b,d,b,end
+%% start,b,end
+%% The slightly larger example above now has 103 paths through it, and the even larger example now has 3509 paths through it.
+%
+%% Given these new rules, how many paths through this cave system are there?
+
+path_2([], Path) :-
+    edge(start, X),
+    path_2([edge(start,X)], Path).
+path_2([Edge|Acc], Path) :-
+    edge(_,X) = Edge,
+    start \= X,
+    edge(X, Z),
+    start \= Z,
+    New = edge(X,Z),
+    (end = Z,
+     reverse([New,Edge|Acc],Path);
+     end \= Z,
+     (big(Z),
+      path_2([New,Edge|Acc], Path);
+      small(Z),
+      (other_twice(Z, [New,Edge|Acc]),
+       me_absent(Z, [Edge|Acc]),
+       path_2([New,Edge|Acc], Path);
+       not(other_twice(Z, [New,Edge|Acc])),
+       (me_once(Z, [Edge|Acc]);
+        me_absent(Z, [Edge|Acc])),
+       path_2([New,Edge|Acc], Path)
+       %,!;format("FOMO: ~p~n", [[Z, New, Edge|Acc]])
+      )
+     )
+    ).
+
+other_twice(X, List) :-
+    %% Caves, other than X, in the List, which is
+    %% passed twice.
+    findall(E,
+            (append(_, [edge(E,_),edge(_,E)|_], List),
+             small(E),
+             E \= X
+            ),
+            L_0),
+    msort(L_0, L_1),
+    clumped(L_1, L_2),
+    %format("other twice: ~p ~p ~p~n", [X, List, L_2]),
+    member(_X-2, L_2),
+    %format("other twice OK: ~p ~p ~p ~p~n", [X,_X,List,L_2]),
+    !.
+
+me_once(X, List) :-
+    findall(E,
+            (append(_, [edge(E,_),edge(_,E)|_], List),
+             E == X
+            ),
+            L_0),
+    msort(L_0, L_1),
+    clumped(L_1, L_2),
+    %format("me once: ~p ~p ~p~n", [X, List, L_2]),
+    (member(X-1, L_2);
+     [] = L_2),
+    %format("me once OK: ~p ~p ~p ~n", [X,List,L_2]),
+    !.
+
+me_absent(X, List) :-
+    findall(E,
+            (append(_, [edge(E,_),edge(_,E)|_], List),
+             E == X
+            ),
+            L_0),
+    msort(L_0, L_1),
+    clumped(L_1, L_2),
+    %format("me absent: ~p ~p ~p~n", [X,List,L_2]),
+    (member(X-0, L_2);
+     [] = L_2),
+    %format("me absent OK: ~p ~p ~p ~n", [X,List,L_2]),
+    !.
+
+solution_2 :-
+    data(Input),
+    load_data(Input),
+    findall(Path,
+            path_2([],Path),
+            P_1),
+    sort(P_1, Paths),
+    foreach((member(Path, Paths),
+             findall(E,append(_,[edge(_,E),edge(E,_)|_],Path),L1)),
+            format("path ~p~n", [L1])),
     length(Paths, Length),
     format("~I paths~n", [Length]),
     true.
