@@ -127,6 +127,11 @@ input_term(Atom, fold_along(C, N)) :-
 %
 %% How many dots are visible after completing just the first fold instruction on your transparent paper?
 
+%% --- Part Two ---
+%% Finish folding the transparent paper according to the instructions. The manual says the code is always eight capital letters.
+%
+%% What code do you use to activate the infrared thermal imaging camera system?
+
 fold([], Points, Points).
 fold([fold_along(A,V)|Commands], Points, Points_1) :-
     sort(Points, Ps_1),
