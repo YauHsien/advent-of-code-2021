@@ -7,19 +7,19 @@ data(Inputs) :-
     csv_read_file(FilePath, Rows, [separator(0'\s),convert(false),match_arity(false)]),
     input_atom_list(Rows, Inputs).
 
-input_atom_list([], _Polymer-[]).
-input_atom_list([row('')|Rows], Polymer-Inputs) :-
-    !,
+input_atom_list([], _Polymer-[]) :- !.
+input_atom_list([row('')|Rows], Polymer-Inputs) :- !,
     input_atom_list(Rows, Polymer-Inputs).
-input_atom_list([row(Atom)|Rows], Polymer-Inputs) :-
+input_atom_list([row(Atom)|Rows], Polymer-Inputs) :- !,
     input_term(row(Atom), Polymer),
     input_atom_list(Rows, Polymer-Inputs).
 input_atom_list([Row|Rows], Polymer-[Term|Inputs]) :-
     row(_,_,_) = Row,
+    !,
     input_term(Row, Term),
     input_atom_list(Rows, Polymer-Inputs).
 
-input_term(row(Atom), Term) :-
+input_term(row(Atom), Term) :- !,
     atom_chars(Atom, List),
     clumped(List, Term).
 input_term(row(Src,'->',Snk), [X,Y]-Snk) :-
@@ -148,7 +148,6 @@ inspect(Polymer) :-
     clumped(U, C),
     predsort(sort_pred, C, R),
     append([Sm-Nsm|_], [L-Nl], R),
-    show(Polymer),
     format("min: ~I ~p(s); max: ~I ~ps (diff: ~I)~n", [Nsm,Sm,Nl,L,Nl-Nsm]).
 
 sort_pred('=', _-A, _-B) :-
@@ -162,3 +161,77 @@ solution :-
     data(P-Rs),
     apply(10, P, Rs, R),
     inspect(R).
+
+%% --- Part Two ---
+%% The resulting polymer isn't nearly strong enough to reinforce the submarine. You'll need to run more steps of the pair insertion process; a total of 40 steps should do it.
+%
+%% In the above example, the most common element is B (occurring 2192039569602 times) and the least common element is H (occurring 3849876073 times); subtracting these produces 2188189693529.
+%
+%% Apply 40 steps of pair insertion to the polymer template and find the most and least common elements in the result. What do you get if you take the quantity of the most common element and subtract the quantity of the least common element?
+
+init_scores(Rules, Scores) :-
+    findall(E-0,
+            (member([E,_]-_, Rules);
+             member([_,E]-_, Rules);
+             member([_,_]-E, Rules)
+            ),
+            Es),
+    sort(Es, Scores).
+
+count(_Gn, 0, [[Y]], _Rules, Scores_acc, Scores) :- !,
+    add_up(Scores_acc, Y, Scores).
+count(Gn, 0, [[X,Y|Rest]], Rules, S0, Scores) :- !,
+    once(member([X,Y]-Z, Rules)),
+    count(Gn, 1, [(X,Z,Y),[Y|Rest]], Rules, S0, Scores).
+
+count(Gn, N, [N|Rest], Rules, S0, Scores) :- !,
+    N1 is N - 1,
+    count(Gn, N1, Rest, Rules, S0, Scores).
+count(Gn, Gn, [(X,Z,_Y)|Rest], Rules, S0, Scores) :- !,
+    add_up(S0, X, S1),
+    add_up(S1, Z, S2),
+    N1 is Gn - 1,
+    count(Gn, N1, Rest, Rules, S2, Scores).
+
+count(Gn, N, [(X,Z,Y)|Rest], Rules, S0, Scores) :- !,
+    Gn > N,
+    once(member([X,Z]-T, Rules)),
+    N1 is N + 1,
+    count(Gn, N1, [(X,T,Z),(Z,Y)|Rest], Rules, S0, Scores).
+count(Gn, N, [(Z,Y)|Rest], Rules, S0, Scores) :- !,
+    Gn > N,
+    once(member([Z,Y]-X, Rules)),
+    N1 is N + 1,
+    count(Gn, N1, [(Z,X,Y),N|Rest], Rules, S0, Scores).
+
+add_up(Scores, X, Scores_1) :-
+    once(member(X-S, Scores)),
+    N1 is S + 1,
+    %findall(E-N1,
+    %        (member(E-N, Scores),
+    %         X = E,
+    %         N1 is N + 1
+    %        ),
+    %        [Head]),
+    findall(E-N,
+            (member(E-N, Scores),
+             X \= E
+            ),
+            Rest),
+    Scores_1 = [X-N1|Rest].
+
+inspect(Polymer, Scores) :-
+    format("polymer: ~p~n", [Polymer]),
+    predsort(sort_pred, Scores, Ss),
+    format("Count:~n"),
+    foreach(member(E-N, Ss),
+            format(" ~a: ~I~n", [E,N])).
+
+solution_2(Gn) :-
+    data(P1-Rs),
+    unclumped(P1, P),
+    init_scores(Rs, S0),
+    count(Gn, 0, [P], Rs, S0, S),
+    inspect(P, S),
+    !,
+    true.
