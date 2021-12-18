@@ -93,5 +93,27 @@ solution :-
     % can be determined by initial vertical velocity and judged
     % to hit or miss by both lowest and highest poistion of the target.
     %
-    % Those trivial things were left in this note.
+    % Those trivial things were left in this note.mm
+    true.
+
+solution_2 :-
+    I = (0,0),
+    %Rh = 20 -x- 30,
+    %Xx = 30,
+    Rh = 209 -x- 238,
+    Xx = 238,
+    %Rv = -10 -x- -5,
+    %Yn = -10,
+    Rv = -86 -x- -59,
+    Yn = -86,
+    mnx(I, Rh, Xf-_),
+    Yx = 85,
+    findall(_,
+            (between(Xf, Xx, Xv),
+             between(Yn, Yx, Yv),
+             f(I, (Xv,Yv), Rh, Rv, _, hit)
+            ),
+            Hs),
+    length(Hs, N),
+    format("~I hit cases", [N]),
     true.
