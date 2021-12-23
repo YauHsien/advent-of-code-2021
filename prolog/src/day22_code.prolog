@@ -234,3 +234,153 @@ solution :-
     format("~I found~n", [Len]),
     %format("~p~n", [Found]),
     true.
+
+bounds(Cs, Xn-Xx, Yn-Yx, Zn-Zx) :-
+    findall(
+        Xn0,
+        member(cuboid(_,Xn0-_,_,_), Cs),
+        Xns
+    ),
+    min_list(Xns, Xn),
+    findall(
+        Yn0,
+        member(cuboid(_,_,Yn0-_,_), Cs),
+        Yns
+    ),
+    min_list(Yns, Yn),
+    findall(
+        Zn0,
+        member(cuboid(_,_,_,Zn0-_), Cs),
+        Zns
+    ),
+    min_list(Zns, Zn),
+    findall(
+        Xx0,
+        member(cuboid(_,_-Xx0,_,_), Cs),
+        Xxs
+    ),
+    max_list(Xxs, Xx),
+    findall(
+        Yn0,
+        member(cuboid(_,_,_-Yn0,_), Cs),
+        Yxs
+    ),
+    max_list(Yxs, Yx),
+    findall(
+        Zx0,
+        member(cuboid(_,_,_,_-Zx0), Cs),
+        Zxs
+    ),
+    max_list(Zxs, Zx).
+
+cuboids(Cuboids, Cuboid_groups) :-
+    cuboids(Cuboids, [], Cuboid_groups).
+
+cuboids([], Cuboid_groups, Cuboid_groups).
+cuboids([Cuboid|Cuboids], Acc, Cuboid_groups) :-
+    add(Cuboid, Acc, Acc1),
+    cuboids(Cuboids, Acc1, Cuboid_groups).
+
+add(Cuboid, [], [[Cuboid]]).
+add(Cuboid, [Cuboids|Cuboid_groups], [[Cuboid|Cuboids]|Cuboid_groups]) :-
+    meet(Cuboid, Cuboids), !.
+add(Cuboid, [Cuboids|Cuboid_groups0], [Cuboids|Cuboid_groups]) :-
+    add(Cuboid, Cuboid_groups0, Cuboid_groups).
+
+meet(cuboid(S,X,Y,Z), [cuboid(_S0,X0,Y0,Z0)|Cuboids]) :-
+    (
+        overlap(X, X0, nil), !,
+        clumped(cuboid(S,X,Y,Z), Cuboids)
+    ;   overlap(Y, Y0, nil), !,
+        clumped(cuboid(S,X,Y,Z), Cuboids)
+    ;   overlap(Z, Z0, nil), !,
+        clumped(cuboid(S,X,Y,Z), Cuboids)
+    ;   %format("~p and ~p met~n", [cuboid(S,X,Y,Z),cuboid(S0,X0,Y0,Z0)]),
+        true
+    ).
+
+on([], Cuboids, Cuboids).
+on([Cuboid|Cuboids], [], Cuboids1) :- !,
+    on(Cuboids, [Cuboid], Cuboids1).
+on([Cuboid|Cuboids], Acc, Cuboids1) :-
+    findall(
+        Cuboids0,
+        (
+            member(Cuboid0, Acc),
+            react(Cuboid0, Cuboid, Cuboids0)
+        ),
+        Acc0
+    ),
+    flatten(Acc0, Acc1),
+    (
+        cuboid(on,_,_,_) = Cuboid, !,
+        on(Cuboids, [Cuboid|Acc1], Cuboids1)
+    ;   on(Cuboids, Acc1, Cuboids1)
+    ).
+
+react(Cuboid, Cuboid0, Cuboids) :-
+    (   overlap(Cuboid, Cuboid0, Overlap), !,
+        destruction(Cuboid, Overlap, Cuboids)
+    ;   Cuboids = [Cuboid]
+    ).
+
+overlap(Xn-Xx, Yn-Yx, Result) :-
+    (
+        Xn =< Yn, Yn =< Xx, Xx =< Yx, !,
+        Result = Yn-Xx
+    ;   Yn < Xn, Xx < Yx, !,
+        Result = Xn-Xx
+    ;   Yn =< Xn, Xn =< Yx, Yx =< Xx, !,
+        Result = Xn-Yx
+    ;   Xn < Yn, Yx < Xx, !,
+        Result = Yn-Yx
+    ).
+overlap(cuboid(S,X,Y,Z), cuboid(_S0,X0,Y0,Z0), cuboid(S,X1,Y1,Z1)) :-
+    overlap(X, X0, X1),
+    overlap(Y, Y0, Y1),
+    overlap(Z, Z0, Z1).
+
+destruction(cuboid(_S,X,Y,Z), cuboid(_S0,X,Y,Z), []) :- !.
+destruction(cuboid(S,X,Y,Z), cuboid(_S0,X0,Y0,Z0), Cuboids) :-
+    destruction(X, X0, Xs),
+    destruction(Y, Y0, Ys),
+    destruction(Z, Z0, Zs),
+    findall(
+        cuboid(S,X1,Y1,Z1),
+        (
+            member(X1, Xs),
+            member(Y1, Ys),
+            member(Z1, Zs),
+            not((X0 == X1, Y0 == Y1, Z0 == Z1))
+        ),
+        Cuboids
+    ).
+destruction(Xn-Xx, Xn-Xx, [Xn-Xx]) :- !.
+destruction(Xn-Xx, Xn0-Xx, [Xn-Xn1,Xn0-Xx]) :-
+    Xn < Xn0, !,
+    Xn1 is Xn0 - 1.
+destruction(Xn-Xx, Xn-Xx0, [Xn-Xx0,Xx1-Xx]) :-
+    Xx0 < Xx, !,
+    Xx1 is Xx0 + 1.
+destruction(Xn-Xx, Xn0-Xx0, [Xn-Xn1,Xn0-Xx0,Xx1-Xx]) :-
+    Xn < Xn0,
+    Xx0 < Xx, !,
+    Xn1 is Xn0 - 1,
+    Xx1 is Xx0 + 1.
+
+sum([], 0).
+sum([cuboid(on,Xn-Xx,Yn-Yx,Zn-Zx)|Cuboids], N+Sum) :- !,
+    N is (Xx-Xn+1) * (Yx-Yn+1) * (Zx-Zn+1),
+    sum(Cuboids, Sum).
+sum([_|Cuboids], Sum) :-
+    sum(Cuboids, Sum).
+
+solution_2 :-
+    data(Cuboids0),
+    on(Cuboids0, [], Cuboids1),
+    %trace,
+    sum(Cuboids1, Sum),
+    format("~I~n", [Sum]),
+    %format("~I = ~p~n", [Sum,Sum]),
+    %format("~p~n",[Cuboids1]),
+    true.
