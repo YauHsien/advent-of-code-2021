@@ -52,10 +52,10 @@ eval(eql, _, _, 0).
 eval([], []) :- !.
 %eval([], [(inp,_)|_]) :- !.
 eval([Value|Values], [(inp,X)|Instructions]) :-
-    (
-        slot(z, Z),
-        format("~I~n", [Z])
-    ),
+    %(
+    %    slot(z, Z),
+    %    format("~I~n", [Z])
+    %),
     slot(X, Vx0),
     retract(slot(X,Vx0)),
     parse(int, Value, Vx),
@@ -172,11 +172,11 @@ solution :-
     %            format("~I~n", [M]),
     %            monad(M)
     %        )).
-    data(Commands),
+    %data(Commands),
     between(1, 11_111_111_111_111, N),
     %M is 55_554_672_721_952 - N,
     M is 53_999_995_899_999 - N,
-    atom_chars(M, Vs),
+    %atom_chars(M, Vs),
     once((
                 monad(M)
                 %reset(memory),
@@ -184,3 +184,22 @@ solution :-
                 %slot(z, 0)
             )),
     format("~I is largest acceptable model number~n", [M]).
+
+solution_2 :-
+    %between(1, 11_111_111_111_111, N),
+    %M is 11_921_151_118_376 - N, % This is my guess.
+    %between(11_111_111_111_111, 11_921_151_118_375, M),
+    L = [1,1,7,2,1,1,A,B,1,1,8,C,D,E],
+    between(1, 9, A),
+    between(1, 9, B),
+    between(1, 9, C),
+    between(1, 9, D),
+    between(1, 9, E),
+    atomic_list_concat(L, L0),
+    atom_number(L0, M),
+    once((
+                %M >= 11_111_111_111_111,
+                monad(M)
+            )),
+    format("~I is smallest acceptable model number~n", [M]).
+
