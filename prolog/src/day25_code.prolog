@@ -49,13 +49,7 @@ before((X,Y0), 'v', (X,Y)) :-
 can_move(Sea_cucumber, X, Y) :-
     sea_cucumber(Sea_cucumber, X, Y),
     before((X,Y), Sea_cucumber, (X1,Y1)),
-    \+(sea_cucumber(_,X1,Y1)).
-
-move(Sea_cucumber, X, Y) :-
-    sea_cucumber(Sea_cucumber, X, Y),
-    can_move(Sea_cucumber, X, Y),
-    before((X,Y), Sea_cucumber, (X1,Y1)),
-    update_by(sea_cucumber(Sea_cucumber,X,Y), sea_cucumber(Sea_cucumber,X1,Y1)).
+    \+ sea_cucumber(_,X1,Y1).
 
 move :-
     move('>').
@@ -63,8 +57,21 @@ move :-
     move('v').
 
 move(Sea_cucumber) :-
-    sea_cucumber(Sea_cucumber, X0, Y0),
-    move(Sea_cucumber, X0, Y0).
+    findall(
+        sea_cucumber(Sea_cucumber,X0,Y0)-sea_cucumber(Sea_cucumber,X,Y),
+        (
+            can_move(Sea_cucumber, X0, Y0),
+            before((X0,Y0), Sea_cucumber, (X,Y))
+        ),
+        Cs1
+    ),
+    foreach(
+        member(X-Y, Cs1),
+        (
+            retract(X),
+            assertz(Y)
+        )
+    ).
 
 load(Input) :-
     [A|_] = Input,
@@ -106,25 +113,52 @@ load([Atom|Input], (X0,Y0)) :-
     Y is Y0 + 1,
     load(Input, (X0,Y)).
 
+layout(sea_floor, Title, Args) :-
+    %% By string_codes("~n", [126,110])
+    string_codes(Title, Title0),
+    append([126,110|Title0], [126,110], Format),
+    format(Format, Args),
+    foreach(layout(position), true).
+
+layout(position) :-
+    top_border(C),
+    bottom_border(D),
+    left_border(A),
+    right_border(B),
+    between(C, D, F),
+    between(A, B, E),
+    (
+        sea_cucumber(S, E, F), right_border(E) ->
+        format("~a~n", [S])
+    ;   sea_cucumber(S, E, F), \+ right_border(E) ->
+        format("~a", [S])
+    ;   \+ sea_cucumber(_, E, F), right_border(E) ->
+        format(".~n")
+    ;   \+ sea_cucumber(_, E, F), \+ right_border(E) ->
+        format(".")
+    ).
+
+layout :-
+    counter(iteration, It),
+    (
+        It > 1,
+        layout(sea_floor, "after ~I steps:", [It])
+    ;   It =:= 1,
+        layout(sea_floor, "after ~I step:", [It])
+    ).
+
 solution :-
     data(Input),
-    %trace,
-    once(load(Input)),
-    %trace,
+    load(Input),
+    %layout(sea_floor, "initial state:", []),
     init(counter, iteration),
     once((
-                %trace,
-                move,
-                %trace,
+                repeat,
+                foreach(move, true),
                 tap(counter, iteration),
-                (
-                    counter(iteration, It),
-                    format("c: ~I~n", [It])
-                    %,It =:= 24
-                ),
-                %trace,
+                %layout,
                 \+ can_move(_,_,_)
             )),
-    trace,
+
     counter(iteration, Count),
-    format("~I steps~n", [Count+1]).
+    format("~n~I steps~n", [Count+1]).
