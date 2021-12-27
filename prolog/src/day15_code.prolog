@@ -2,18 +2,24 @@
 %% -- Data -----------------------------------
 file_path('../inputs/day15_input.txt').
 
-data(Inputs) :-
+data(Input) :-
     file_path(FilePath),
-    csv_read_file(FilePath, Rows, [convert(false),match_arity(false)]),
-    input_atom_list(Rows, Inputs).
+    csv_read_file(FilePath, Rows),
+    input_atom_list(Rows, 1, Terms),
+    flatten(Terms, Input).
 
-input_atom_list([], []).
-input_atom_list([row(Atom)|Rows], [Term|Commands]) :-
-    input_term(Atom, Term),
-    input_atom_list(Rows, Commands).
+input_atom_list([], _, []).
+input_atom_list([Row|Rows], I, [Term|Commands]) :-
+    input_term(Row, I, Term),
+    I1 is I +1,
+    input_atom_list(Rows, I1, Commands).
 
-input_term(Atom, Atom) :-
-    true.
+input_term(Row, Y, Term) :-
+    findall(
+        (X,Y)-R,
+        arg(X, Row, R),
+        Term
+    ).
 
 %% --- Day 15: Chiton ---
 %% You've almost reached the exit of the cave, but the walls are getting closer together. Your submarine can barely still fit, though; the main problem is that the walls of the cave are covered in chitons, and it would be best not to bump any of them.
@@ -22,7 +28,7 @@ input_term(Atom, Atom) :-
 %
 %% 1163751742
 %% 1381373672
-%% 2136511328
+% 2136511328
 %% 3694931569
 %% 7463417111
 %% 1319128137
@@ -47,3 +53,123 @@ input_term(Atom, Atom) :-
 %% The total risk of this path is 40 (the starting position is never entered, so its risk is not counted).
 %
 %% What is the lowest total risk of any path from the top left to the bottom right?
+
+%% vertex(?(X,Y), ?Vertex_as_weight)
+:- dynamic vertex/2.
+
+%% select(?(X,Y))
+:- dynamic selected/1.
+
+%% weight(?(X0,Y0), ?Weight, ?(X,Y))
+:- dynamic weight/3.
+
+reset(load) :-
+    retractall(vertex(_,_)).
+reset(dijkstra) :-
+    retractall(selected(_)),
+    retractall(weight(_,_,_)).
+
+update_by(Goal0, Goal) :-
+    ( Goal0, !,
+      retract(Goal0)
+    ; true
+    ),
+    assertz(Goal).
+
+load(Data) :-
+    reset(load),
+    foreach(
+        member((X,Y)-V, Data),
+        assertz(vertex((X,Y),V))
+    ).
+
+:- table neighbor/2.
+
+neighbor((X0,Y0), (X,Y0)) :-
+    X is X0 -1,
+    vertex((X,Y0), _).
+neighbor((X0,Y0), (X,Y0)) :-
+    X is X0 +1,
+    vertex((X,Y0), _).
+neighbor((X0,Y0), (X0,Y)) :-
+    Y is Y0 -1,
+    vertex((X0,Y), _).
+neighbor((X0,Y0), (X0,Y)) :-
+    Y is Y0 +1,
+    vertex((X0,Y), _).
+
+%% select(-(X,Y))
+select(Xy) :-
+    findall(
+        W-Xy,
+        (
+            vertex(Xy, _),
+            \+ selected(Xy),
+            weight(_, W, Xy)
+        ),
+        Rs
+    ),
+    sort(Rs, [W-Xy|_]),
+    (
+        %trace,
+        %format("~p~n", [Xy]),
+        assertz(selected(Xy))
+    ).
+
+release(Xy) :-
+    foreach(
+        (
+            neighbor(Xy, Xy1),
+            \+ selected(Xy1)
+        ),
+        release(Xy, Xy1)
+    ).
+
+release((X0,Y0), (X1,Y1)) :-
+    (
+        weight(S, W0, (X0,Y0)),
+        vertex((X1,Y1), W1),
+        W is W0 +W1
+    ),
+    ( weight(S, W2, (X1,Y1)), !,
+      ( W < W2, !,
+        %trace,
+        update_by(weight(S,W2,(X1,Y1)), weight(S,W,(X1,Y1)))
+      ; true
+      )
+    ; %trace,
+      assertz(weight(S,W,(X1,Y1)))
+    ).
+
+dijkstra(From_xy, To_xy) :-
+    reset(dijkstra),
+    assertz(weight(From_xy,0,From_xy)),
+    once((
+                repeat,
+                %trace,
+                select(Xy0),
+                %trace,
+                foreach(
+                    (
+                        neighbor(Xy0, Xy1),
+                        \+ selected(Xy1)
+                    ),
+                    (
+                        %trace,
+                        release(Xy0, Xy1)
+                    )
+                ),
+                %trace,
+                selected(To_xy)
+            )).
+
+solution :-
+    data(Input),
+    load(Input),
+    (
+        [From_xy-_|_] = Input,
+        reverse(Input, [To_xy-_|_])
+    ),
+    dijkstra(From_xy, To_xy),
+    weight(From_xy, Weight, To_xy),
+    format("lowest risk level: ~I~n", [Weight]).
