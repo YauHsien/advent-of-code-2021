@@ -85,15 +85,15 @@ load(Data) :-
 
 :- table neighbor/2.
 
-neighbor((X0,Y0), (X,Y0)) :-
-    X is X0 -1,
-    vertex((X,Y0), _).
+%neighbor((X0,Y0), (X,Y0)) :-
+%    X is X0 -1,
+%    vertex((X,Y0), _).
 neighbor((X0,Y0), (X,Y0)) :-
     X is X0 +1,
     vertex((X,Y0), _).
-neighbor((X0,Y0), (X0,Y)) :-
-    Y is Y0 -1,
-    vertex((X0,Y), _).
+%neighbor((X0,Y0), (X0,Y)) :-
+%    Y is Y0 -1,
+%    vertex((X0,Y), _).
 neighbor((X0,Y0), (X0,Y)) :-
     Y is Y0 +1,
     vertex((X0,Y), _).
@@ -109,6 +109,7 @@ select(Xy) :-
         ),
         Rs
     ),
+    %format("r: ~p~n", [Rs]),
     sort(Rs, [W-Xy|_]),
     (
         %trace,
@@ -141,24 +142,13 @@ release((X0,Y0), (X1,Y1)) :-
       assertz(weight(S,W,(X1,Y1)))
     ).
 
-dijkstra(From_xy, To_xy) :-
-    reset(dijkstra),
-    assertz(weight(From_xy,0,From_xy)),
+dijkstra(_From_xy, To_xy) :-
     once((
                 repeat,
                 %trace,
                 select(Xy0),
                 %trace,
-                foreach(
-                    (
-                        neighbor(Xy0, Xy1),
-                        \+ selected(Xy1)
-                    ),
-                    (
-                        %trace,
-                        release(Xy0, Xy1)
-                    )
-                ),
+                release(Xy0),
                 %trace,
                 selected(To_xy)
             )).
@@ -170,6 +160,56 @@ solution :-
         [From_xy-_|_] = Input,
         reverse(Input, [To_xy-_|_])
     ),
+    reset(dijkstra),
+    assertz(weight(From_xy,0,From_xy)),
     dijkstra(From_xy, To_xy),
     weight(From_xy, Weight, To_xy),
     format("lowest risk level: ~I~n", [Weight]).
+
+load5(Data, (W,H)) :-
+    reset(load),
+    W0 is W div 5,
+    H0 is H div 5,
+    foreach(
+        (
+            member((X,Y)-V, Data),
+            X1 is X +W0,
+            X2 is X1 +W0,
+            X3 is X2 +W0,
+            X4 is X3 +W0,
+            Y1 is Y +H0,
+            Y2 is Y1 +H0,
+            Y3 is Y2 +H0,
+            Y4 is Y3 +H0,
+            member(X0, [X,X1,X2,X3,X4]),
+            member(Y0, [Y,Y1,Y2,Y3,Y4]),
+            V0 is ((X0-X+1) div W0 + (Y0-Y+1) div H0 +V -1) mod 9 + 1
+        ),
+        assertz(vertex((X0,Y0),V0))
+    ).
+
+solution_2 :-
+    data(Input),
+    (
+        [From_xy-_|_] = Input,
+        reverse(Input, [(X0,Y0)-_|_]),
+        W is X0 *5,
+        H is Y0 *5,
+        To_xy = (W,H)
+    ),
+    load5(Input, (W,H)),
+    reset(dijkstra),
+    assertz(weight(From_xy,0,From_xy)),
+    dijkstra(From_xy, To_xy),
+    weight(From_xy, Weight, To_xy),
+    format("lowest risk level: ~I~n", [Weight]).
+
+layout(W,H) :-
+    P = foreach(
+            (
+                between(1, W, X),
+                vertex((X,Y), V)
+            ),
+            format("~I", [V])
+        ),
+    foreach(between(1,H,Y), (call(P),format("~n"))).
